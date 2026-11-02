@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Azure Native RAG</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f6f8;
+    --surface: #ffffff;
+    --border: #e4e6eb;
+    --text: #1a1d23;
+    --text-muted: #6b7280;
+    --accent: #4f46e5;
+    --accent-contrast: #ffffff;
+    --bubble-agent: #f1f2f6;
+    --bubble-user: #4f46e5;
+    --radius: 14px;
+    --shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1115;
+      --surface: #171a21;
+      --border: #272b33;
+      --text: #e8e9ec;
+      --text-muted: #9aa0ab;
+      --bubble-agent: #20242d;
+      --bubble-user: #5b53f0;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 760px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .title { display: flex; flex-direction: column; min-width: 0; }
+  .title h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  .title p { font-size: 12.5px; margin: 0; color: var(--text-muted); }
+
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .empty-state {
+    margin: auto;
+    text-align: center;
+    color: var(--text-muted);
+    max-width: 320px;
+  }
+  .empty-state .icon { font-size: 28px; margin-bottom: 8px; }
+  .empty-state h2 { font-size: 15px; color: var(--text); margin: 0 0 6px; }
+  .empty-state p { font-size: 13px; margin: 0; line-height: 1.5; }
+
+  .row {
+    display: flex;
+    gap: 10px;
+    max-width: 85%;
+  }
+  .row.user { align-self: flex-end; flex-direction: row-reverse; }
+  .row.agent { align-self: flex-start; }
+
+  .avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .row.user .avatar { background: var(--bubble-user); }
+  .row.agent .avatar { background: #9ca3af; }
+
+  .bubble {
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 14.5px;
+    line-height: 1.55;
+    word-wrap: break-word;
+  }
+  .row.user .bubble {
+    background: var(--bubble-user);
+    color: var(--accent-contrast);
+    border-bottom-right-radius: 4px;
+  }
+  .row.agent .bubble {
+    background: var(--bubble-agent);
+    color: var(--text);
+    border-bottom-left-radius: 4px;
+  }
+  .bubble p:first-child { margin-top: 0; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble code {
+    background: rgba(0,0,0,0.08);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  .typing { display: inline-flex; gap: 4px; padding: 4px 0; }
+  .typing span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.15s; }
+  .typing span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-4px); opacity: 1; }
+  }
+
+  .composer {
+    border-top: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .upload-chip {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    display: none;
+    align-items: center;
+    gap: 6px;
+  }
+  .upload-chip.visible { display: inline-flex; }
+
+  .input-bar {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 6px 6px 6px 14px;
+  }
+
+  #message {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    resize: none;
+    font-size: 14.5px;
+    font-family: inherit;
+    color: var(--text);
+    max-height: 120px;
+    padding: 8px 0;
+    line-height: 1.4;
+  }
+  #message::placeholder { color: var(--text-muted); }
+
+  .icon-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s ease;
+  }
+  .icon-btn:hover { background: var(--border); }
+
+  #sendBtn {
+    background: var(--accent);
+    color: #fff;
+  }
+  #sendBtn:hover { background: #4338ca; }
+  #sendBtn:disabled {
+    background: var(--border);
+    color: var(--text-muted);
+    cursor: not-allowed;
+  }
+
+  #fileInput { display: none; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 8px; }
+</style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">R</div>
+      <div class="title">
+        <h1>Azure Native RAG</h1>
+        <p>Grounded answers from your documents, powered by Azure AI Foundry</p>
+      </div>
+    </header>
+
+    <div id="chat">
+      <div class="empty-state" id="emptyState">
+        <div class="icon">💬</div>
+        <h2>Ask anything about your documents</h2>
+        <p>Upload a document and start a conversation. Answers are grounded in your data with source citations.</p>
+      </div>
+    </div>
+
+    <div class="composer">
+      <span class="upload-chip" id="uploadStatus"></span>
+      <div class="input-bar">
+        <button class="icon-btn" id="attachBtn" title="Attach a document" type="button">📎</button>
+        <input type="file" id="fileInput" />
+        <textarea id="message" rows="1" placeholder="Type your question..."></textarea>
+        <button class="icon-btn" id="sendBtn" title="Send" type="button">➤</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let conversationId = null;
+let isSending = false;
+
+const chatEl = document.getElementById('chat');
+const emptyStateEl = document.getElementById('emptyState');
+const messageEl = document.getElementById('message');
+const sendBtn = document.getElementById('sendBtn');
+const attachBtn = document.getElementById('attachBtn');
+const fileInput = document.getElementById('fileInput');
+const uploadStatus = document.getElementById('uploadStatus');
+
+function renderMarkdown(text) {
+  const html = marked.parse(text, { breaks: true });
+  return DOMPurify.sanitize(html);
+}
+
+function hideEmptyState() {
+  if (emptyStateEl) emptyStateEl.remove();
+}
+
+function scrollToBottom() {
+  chatEl.scrollTop = chatEl.scrollHeight;
+}
+
+function appendRow(role) {
+  hideEmptyState();
+  const row = document.createElement('div');
+  row.className = `row ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'avatar';
+  avatar.textContent = role === 'user' ? 'U' : 'A';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+
+  row.appendChild(avatar);
+  row.appendChild(bubble);
+  chatEl.appendChild(row);
+  scrollToBottom();
+  return bubble;
+}
+
+function showTyping(bubble) {
+  bubble.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
+}
+
+async function uploadFile(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  uploadStatus.textContent = `Uploading ${file.name}...`;
+  uploadStatus.classList.add('visible');
+  try {
+    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+    uploadStatus.textContent = `Uploaded: ${data.filename}`;
+  } catch (err) {
+    uploadStatus.textContent = `Upload failed: ${file.name}`;
+  }
+  setTimeout(() => uploadStatus.classList.remove('visible'), 4000);
+}
+
+attachBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) uploadFile(fileInput.files[0]);
+  fileInput.value = '';
+});
+
+messageEl.addEventListener('input', () => {
+  messageEl.style.height = 'auto';
+  messageEl.style.height = `${Math.min(messageEl.scrollHeight, 120)}px`;
+});
+
+messageEl.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendMessage();
+  }
+});
+
+sendBtn.addEventListener('click', sendMessage);
+
+async function sendMessage() {
+  const text = messageEl.value.trim();
+  if (!text || isSending) return;
+
+  isSending = true;
+  sendBtn.disabled = true;
+  messageEl.value = '';
+  messageEl.style.height = 'auto';
+
+  const userBubble = appendRow('user');
+  userBubble.textContent = text;
+
+  const agentBubble = appendRow('agent');
+  showTyping(agentBubble);
+
+  let rawText = '';
+  let firstChunk = true;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text, conversation_id: conversationId }),
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+
+      for (const part of parts) {
+        const lines = part.split('\n');
+        const eventLine = lines.find((l) => l.startsWith('event:'));
+        const dataLine = lines.find((l) => l.startsWith('data:'));
+        if (!eventLine || !dataLine) continue;
+        const eventType = eventLine.replace('event:', '').trim();
+        const data = JSON.parse(dataLine.replace('data:', '').trim());
+
+        if (eventType === 'meta') {
+          conversationId = data.conversation_id;
+        } else if (eventType === 'delta') {
+          if (firstChunk) {
+            agentBubble.textContent = '';
+            firstChunk = false;
+          }
+          rawText += data.text;
+          agentBubble.textContent = rawText;
+          scrollToBottom();
+        }
+      }
+    }
+
+    if (rawText) {
+      agentBubble.innerHTML = renderMarkdown(rawText);
+    } else if (firstChunk) {
+      agentBubble.textContent = 'No response received.';
+    }
+  } catch (err) {
+    agentBubble.textContent = 'Something went wrong. Please try again.';
+  } finally {
+    isSending = false;
+    sendBtn.disabled = false;
+    scrollToBottom();
+  }
+}
+</script>
+</body>
+</html>
