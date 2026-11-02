@@ -1,8 +1,8 @@
 <div align="center">
 
-# Azure Native RAG
+# Azure Foundry RAG - Azure Foundry Agent Lab
 
-**A Retrieval-Augmented Generation chat app built entirely on Azure native services.**
+**A Retrieval-Augmented Generation chat app built entirely on Azure services.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
@@ -13,7 +13,7 @@
 
 Azure AI Foundry Agent Service answers questions grounded in your own documents — retrieved through Azure AI Search, stored in Azure Blob Storage, served through a streaming FastAPI backend on Azure Container Apps, and traced end-to-end with Application Insights.
 
-## 📑 Contents
+## Contents
 
 - [Features](#features)
 - [Architecture](#architecture)
@@ -24,16 +24,16 @@ Azure AI Foundry Agent Service answers questions grounded in your own documents 
 - [Project structure](#project-structure)
 - [License](#license)
 
-## ✨ Features
+## Features
 
-- 🔎 **Grounded answers** — the agent retrieves from your own documents via Azure AI Search and cites its sources.
-- ⚡ **Streaming responses** — token-by-token output over Server-Sent Events, no polling.
-- 📤 **Document upload** — drop files straight into Blob Storage from the chat UI.
-- 📊 **Full observability** — OpenTelemetry traces for every request, visible in Application Insights.
-- 🔐 **No secrets in code** — every Azure service is accessed with `DefaultAzureCredential` and RBAC, not API keys.
-- 🐳 **Container-ready** — a single Dockerfile takes you from laptop to Azure Container Apps.
+- **Grounded answers** — the agent retrieves from your own documents via Azure AI Search and cites its sources.
+- **Streaming responses** — token-by-token output over Server-Sent Events, no polling.
+- **Document upload** — drop files straight into Blob Storage from the chat UI.
+- **Full observability** — OpenTelemetry traces for every request, visible in Application Insights.
+- **No secrets in code** — every Azure service is accessed with `DefaultAzureCredential` and RBAC, not API keys.
+- **Container-ready** — a single Dockerfile takes you from laptop to Azure Container Apps.
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 flowchart LR
@@ -48,7 +48,7 @@ flowchart LR
 
 The chat endpoint streams responses back to the browser over Server-Sent Events (SSE). The Foundry Agent is configured with an **Azure AI Search** tool pointing at a vectorized index built from the documents in Blob Storage, so answers are grounded in your own data and include source citations.
 
-## ✅ Prerequisites
+## Prerequisites
 
 Before running this app you need the following Azure resources already provisioned:
 
@@ -67,9 +67,9 @@ Identity used by the app (your own account for local development, or the app's m
 | Azure AI Foundry project | `Foundry User` (assigned at the **project** scope) |
 | Storage account | `Storage Blob Data Contributor` |
 
-📖 **New to these resources?** Follow the detailed, click-by-click walkthrough in **[docs/azure-setup.md](docs/azure-setup.md)** — it covers every Azure Portal screen above, plus the pitfalls we hit while building this project (region availability, RBAC scoping, registry authentication, and more).
+**New to these resources?** Follow the detailed, click-by-click walkthrough in **[docs/azure-setup.md](docs/azure-setup.md)** — it covers every Azure Portal screen above, plus the pitfalls we hit while building this project (region availability, RBAC scoping, registry authentication, and more).
 
-## 🧑‍💻 Local development
+## Local development
 
 This project uses [`uv`](https://docs.astral.sh/uv/) for dependency management.
 
@@ -106,14 +106,14 @@ uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 Open `http://localhost:8000` and start chatting.
 
-## 🐳 Running with Docker
+## Running with Docker
 
 ```bash
 docker build -t azure-native-rag:latest .
 docker run -p 8000:8000 --env-file .env azure-native-rag:latest
 ```
 
-## ☁️ Deploying to Azure Container Apps
+## Deploying to Azure Container Apps
 
 1. Push the image to an Azure Container Registry.
 2. Create a Container App from that image, with ingress enabled on port `8000`.
@@ -121,7 +121,7 @@ docker run -p 8000:8000 --env-file .env azure-native-rag:latest
 4. Grant the managed identity the roles listed in [Prerequisites](#prerequisites).
 5. Set the environment variables from the table above on the Container App.
 
-## 🗂️ Project structure
+## Project structure
 
 ```
 app/
@@ -139,6 +139,6 @@ Dockerfile
 requirements.txt
 ```
 
-## 📄 License
+## License
 
 Licensed under the [MIT License](LICENSE).
